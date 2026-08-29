@@ -44,6 +44,9 @@ private:
     void undo_delete();
     void copy_selection();
 
+    // 項目の右クリックメニュー (パス表示 + エクスプローラで表示)
+    void show_item_context_menu(int engine_index, POINT screen_point);
+
     void rebuild_menu();
     void apply_language();
     void apply_theme();

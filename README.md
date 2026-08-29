@@ -15,6 +15,7 @@ Meguri は、短い WEBP アニメーション、MP4/WMV/AVI 動画、PNG/JPEG �
 - クリック、Ctrl+クリック、Shift+クリック、Ctrl+A による選択
 - Del で選択ファイルをゴミ箱へ移動、Ctrl+Z で直前の削除バッチを復元
 - Ctrl+C で選択/表示中のファイルをコピー、オプションで ComfyUI メタデータを優先コピー
+- 右クリックでその項目のフォルダとファイル名を表示し、エクスプローラで表示
 - ダブルクリックまたは Enter で 1 件を拡大表示
 - 拡大表示中のシーク、再生/一時停止、前後移動、削除して次を表示、音声再生
 - 一覧表示中の動画音声を同時再生する実験的オプション
@@ -43,6 +44,7 @@ Meguri は、短い WEBP アニメーション、MP4/WMV/AVI 動画、PNG/JPEG �
 | 拡大表示中の矢印キー / ホイール | 前後の項目へ移動 |
 | 拡大表示中の Space | 再生 / 一時停止 |
 | Ctrl+ホイール | タイルサイズ調整 |
+| 右クリック | パス表示 / エクスプローラで表示 |
 
 起動引数でフォルダを渡すこともできます。
 
@@ -90,6 +92,16 @@ powershell -ExecutionPolicy Bypass -File scripts\dev_build.ps1
 cmake --preset vs2022
 cmake --build --preset build-release
 ctest --preset test-release --output-on-failure
+```
+
+## E2E スクリプト
+
+実際の GUI を起動して動作を確認する補助スクリプトです (要ビルド済みバイナリ)。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\e2e_delete_test.ps1         # 削除 -> 復元 (Debug ビルド)
+powershell -ExecutionPolicy Bypass -File scripts\e2e_zoom_resize_test.ps1    # 拡大表示のリサイズ (Debug ビルド)
+powershell -ExecutionPolicy Bypass -File scripts\e2e_context_menu_test.ps1   # 右クリックメニュー (Release ビルド)
 ```
 
 ## CLI

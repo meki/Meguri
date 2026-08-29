@@ -16,6 +16,7 @@ unwanted files to the Recycle Bin.
 - Select with click, Ctrl+click, Shift+click, and Ctrl+A
 - Move selected files to the Recycle Bin with Del, and restore the last delete batch with Ctrl+Z
 - Copy selected or zoomed files with Ctrl+C, with an option to prefer ComfyUI metadata
+- Right-click an item to see its folder and file name, and to show it in Explorer
 - Open a single item in zoom view with double-click or Enter
 - Seek, play/pause, move between items, delete-and-advance, and play audio in zoom view
 - Optional experimental audio playback for videos visible in the grid
@@ -44,6 +45,7 @@ Start `Meguri.exe`, then open or drop a media folder.
 | Arrow keys / wheel in zoom view | Move to the previous or next item |
 | Space in zoom view | Play / pause |
 | Ctrl+wheel | Adjust tile size |
+| Right-click | Show the item path / Show in Explorer |
 
 You can also pass a folder path as the first argument:
 
@@ -94,6 +96,16 @@ Manual CMake commands:
 cmake --preset vs2022
 cmake --build --preset build-release
 ctest --preset test-release --output-on-failure
+```
+
+## E2E scripts
+
+Helper scripts that launch the real GUI and verify behavior (build first).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\e2e_delete_test.ps1         # Delete -> restore (Debug build)
+powershell -ExecutionPolicy Bypass -File scripts\e2e_zoom_resize_test.ps1    # Zoom view resize (Debug build)
+powershell -ExecutionPolicy Bypass -File scripts\e2e_context_menu_test.ps1   # Right-click menu (Release build)
 ```
 
 ## CLI

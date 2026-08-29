@@ -71,6 +71,8 @@ public:
     std::function<void()> on_undo_requested;
     std::function<void()> on_copy_requested;
     std::function<void(int)> on_row_height_wheel;  // Ctrl+ホイール (ノッチ数, 正=拡大)
+    // 右クリック等でコンテキストメニューが要求された (engine index, 画面座標)
+    std::function<void(int engine_index, POINT screen_point)> on_context_menu;
 
     // 現在のビューを PNG に保存する (WIC レンダーターゲット使用。
     // セッションロック中など DWM 合成が見えない状況でも E2E 検証できる)
@@ -118,6 +120,9 @@ private:
     void scroll_by(double delta);
     void scroll_to(double y);
     int hit_test(POINT client) const;  // display index (-1 = なし)
+    // コンテキストメニューの対象 (display index) と表示位置を決める。
+    // by_keyboard の場合は選択中/ズーム中の項目を対象に、その中央へ出す
+    int resolve_context_target(bool by_keyboard, POINT* screen_point) const;
     void handle_click(POINT client, bool ctrl, bool shift);
     void handle_key(WPARAM key);
     void sweep_bitmaps();
@@ -173,6 +178,7 @@ private:
     bool layout_dirty_ = true;
     uint64_t seen_probe_version_ = 0;
     int hover_index_ = -1;  // display index
+    int context_index_ = -1;  // 右クリックされた display index (WM_CONTEXTMENU で使う)
     int zoom_display_index_ = -1;    // -1 = ズームなし
     int zoom_fullres_engine_ = -1;   // 原寸デコードを要求中の engine index
 
