@@ -108,6 +108,10 @@ const Entry& entry_for(Str id) {
         /* StatusCopyFailed */ {L"コピーに失敗しました", L"Failed to copy"},
         /* FolderPickTitle */ {L"表示するフォルダを選択", L"Select a folder to view"},
         /* LoadFailedTile */ {L"読込失敗", L"Load failed"},
+        /* CtxShowInExplorer */
+        {L"エクスプローラで表示", L"Show in Explorer"},
+        /* StatusRevealFailed */
+        {L"エクスプローラで表示できませんでした", L"Could not show the item in Explorer"},
     };
     return table[static_cast<int>(id)];
 }

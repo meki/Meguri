@@ -71,6 +71,8 @@ enum class Str {
     StatusCopyFailed,
     FolderPickTitle,
     LoadFailedTile,  // 読込失敗
+    CtxShowInExplorer,      // 右クリックメニュー: エクスプローラで表示
+    StatusRevealFailed,     // エクスプローラで表示できなかった
 };
 
 // 言語を設定する (Auto はシステムの UI 言語から日本語/英語に解決)

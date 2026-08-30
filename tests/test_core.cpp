@@ -3,6 +3,7 @@
 
 #include "core/item_filter.h"
 #include "core/layout.h"
+#include "core/path_display.h"
 #include "core/playback.h"
 #include "core/scheduler.h"
 #include "core/selection.h"
@@ -301,6 +302,56 @@ TEST_CASE(sort_by_size_descending) {
     CHECK_EQ(order[1], 0);  // 300
     CHECK_EQ(order[2], 2);  // 200
     CHECK_EQ(order[3], 1);  // 100
+}
+
+// ---- path display ----
+
+TEST_CASE(path_display_splits_folder_and_name) {
+    const std::wstring path = L"C:\\media\\root\\sub\\clip_0001.webp";
+    CHECK(file_name(path) == L"clip_0001.webp");
+    CHECK(parent_directory(path) == L"C:\\media\\root\\sub");
+    // 区切りが無ければ全体がファイル名、親フォルダは空
+    CHECK(file_name(L"clip.webp") == L"clip.webp");
+    CHECK(parent_directory(L"clip.webp").empty());
+    // ルート直下は区切りを残す (親が "C:" にならないように)
+    CHECK(parent_directory(L"C:\\clip.webp") == L"C:\\");
+    // スラッシュ区切りも扱う
+    CHECK(file_name(L"C:/media/clip.webp") == L"clip.webp");
+}
+
+TEST_CASE(path_display_ellipsizes_middle) {
+    CHECK(ellipsize_middle(L"short", 10) == L"short");
+    CHECK(ellipsize_middle(L"abcdefghij", 10) == L"abcdefghij");
+    // 9 文字に収める: 前 3 + "..." + 後 3
+    CHECK(ellipsize_middle(L"abcdefghij", 9) == L"abc...hij");
+    CHECK(ellipsize_middle(L"abcdefghij", 9).size() == 9);
+    // 省略記号すら入らない指定は "..." を返す
+    CHECK(ellipsize_middle(L"abcdefghij", 3) == L"...");
+}
+
+TEST_CASE(path_display_keeps_surrogate_pairs_intact) {
+    // サロゲートペア 4 組 (U+1F600) を並べ、境界で分断されないことを確認する
+    const std::wstring text = L"\xD83D\xDE00\xD83D\xDE00\xD83D\xDE00\xD83D\xDE00";
+    const std::wstring result = ellipsize_middle(text, 6);
+    CHECK(result.size() <= 6);
+    for (size_t i = 0; i < result.size(); ++i) {
+        const wchar_t c = result[i];
+        const bool high = c >= 0xD800 && c <= 0xDBFF;
+        const bool low = c >= 0xDC00 && c <= 0xDFFF;
+        // 上位サロゲートの直後は必ず下位サロゲート、下位は必ず上位の直後
+        if (high) CHECK(i + 1 < result.size() && result[i + 1] >= 0xDC00 &&
+                        result[i + 1] <= 0xDFFF);
+        if (low) CHECK(i > 0 && result[i - 1] >= 0xD800 && result[i - 1] <= 0xDBFF);
+    }
+}
+
+TEST_CASE(path_display_escapes_menu_ampersand) {
+    // メニューでは & がニーモニック記号として消えるため二重化する
+    CHECK(escape_menu_text(L"A&B") == L"A&&B");
+    CHECK(escape_menu_text(L"plain") == L"plain");
+    CHECK(menu_label(L"a&b&c", 100) == L"a&&b&&c");
+    // 省略してからエスケープする (省略後の & だけが二重化される)
+    CHECK(menu_label(L"&&&&&&&&&&", 9) == L"&&&&&&...&&&&&&");
 }
 
 // ---- ComfyUI metadata ----

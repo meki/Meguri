@@ -207,6 +207,24 @@ LRESULT GridView::handle_message(UINT msg, WPARAM wparam, LPARAM lparam) {
             if (index >= 0) enter_zoom(index);
             return 0;
         }
+        case WM_RBUTTONDOWN: {
+            SetFocus(hwnd_);
+            if (zoomed()) return 0;  // ズーム中は表示中の 1 件が対象
+            const POINT pt{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+            const int index = hit_test(pt);
+            // 選択済みの項目を右クリックしたときは選択を保つ (複数選択を壊さない)
+            if (index >= 0 && !selection_.contains(index)) handle_click(pt, false, false);
+            context_index_ = index;  // メニューは WM_CONTEXTMENU で出す
+            return 0;
+        }
+        case WM_CONTEXTMENU: {
+            POINT screen{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+            const bool by_keyboard = screen.x == -1 && screen.y == -1;
+            const int display_index = resolve_context_target(by_keyboard, &screen);
+            if (display_index < 0) return 0;  // 空き領域では出さない
+            if (on_context_menu) on_context_menu(display_order_[display_index], screen);
+            return 0;
+        }
         case WM_MOUSEMOVE: {
             const POINT pt{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
             if (seek_dragging_ || volume_dragging_) {
@@ -241,6 +259,7 @@ LRESULT GridView::handle_message(UINT msg, WPARAM wparam, LPARAM lparam) {
 void GridView::set_display_order(std::vector<int> order) {
     display_order_ = std::move(order);
     selection_.clear();
+    context_index_ = -1;
     layout_dirty_ = true;
     // engine index が別ライブラリを指し得るため、キャッシュは全部作り直す。
     // last_active_ を空にすると次の render で set_active が必ず走り、
@@ -518,6 +537,39 @@ int GridView::hit_test(POINT client) const {
         }
     }
     return -1;
+}
+
+int GridView::resolve_context_target(bool by_keyboard, POINT* screen_point) const {
+    int display_index = -1;
+    if (zoomed()) {
+        display_index = zoom_display_index_;
+    } else if (by_keyboard) {
+        const std::vector<int> items = selection_.items();
+        if (!items.empty()) display_index = items.front();
+    } else {
+        display_index = context_index_;
+    }
+    if (display_index < 0 || display_index >= static_cast<int>(display_order_.size())) return -1;
+
+    if (by_keyboard) {
+        // Shift+F10 / メニューキー: 対象タイルの中央 (ズーム中はビュー中央) に出す
+        RECT rc;
+        GetClientRect(hwnd_, &rc);
+        POINT pt{(rc.left + rc.right) / 2, (rc.top + rc.bottom) / 2};
+        if (!zoomed()) {
+            for (const auto& tile : layout_.tiles) {
+                if (tile.item_index != display_index) continue;
+                pt.x = static_cast<LONG>(tile.x + tile.width / 2);
+                pt.y = static_cast<LONG>(tile.y + tile.height / 2 - scroll_y_);
+                break;
+            }
+            pt.x = std::clamp(pt.x, rc.left, rc.right);
+            pt.y = std::clamp(pt.y, rc.top, rc.bottom);
+        }
+        ClientToScreen(hwnd_, &pt);
+        *screen_point = pt;
+    }
+    return display_index;
 }
 
 void GridView::handle_click(POINT client, bool ctrl, bool shift) {

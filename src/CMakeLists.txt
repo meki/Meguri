@@ -10,6 +10,7 @@ add_library(meguri_core STATIC
     core/selection.cpp
     core/playback.cpp
     core/item_filter.cpp
+    core/path_display.cpp
 )
 target_include_directories(meguri_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -23,6 +24,7 @@ add_library(meguri_io STATIC
     io/comfy_metadata.cpp
     io/probe.cpp
     io/recycle.cpp
+    io/shell_reveal.cpp
     io/sample_gen.cpp
 )
 target_include_directories(meguri_io PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

@@ -10,11 +10,13 @@
 #include <cstdint>
 #include <cstring>
 
+#include "core/path_display.h"
 #include "dark_mode.h"
 #include "io/comfy_metadata.h"
 #include "io/mp4_decoder.h"  // set_gpu_memory_percent
 #include "io/recycle.h"
 #include "io/scanner.h"
+#include "io/shell_reveal.h"
 #include "strings.h"
 
 using Microsoft::WRL::ComPtr;
@@ -65,7 +67,15 @@ enum : int {
     IDM_GPUMEM_100,
     IDM_STORAGE_PORTABLE = 270,
     IDM_STORAGE_APPDATA,
+
+    // 項目の右クリックメニュー (TrackPopupMenu の戻り値で処理する)
+    IDM_CTX_FOLDER = 280,  // 表示専用 (無効化)
+    IDM_CTX_NAME,          // 表示専用 (無効化)
+    IDM_CTX_REVEAL,
 };
+
+// 右クリックメニューに載せるパス文字列の最大長 (これを超えたら中央省略)
+constexpr size_t kContextPathMaxChars = 100;
 
 constexpr UINT_PTR kStatusTimer = 2;
 
@@ -252,6 +262,9 @@ void MainWindow::on_create() {
     grid_.on_delete_requested = [this] { delete_selection(); };
     grid_.on_undo_requested = [this] { undo_delete(); };
     grid_.on_copy_requested = [this] { copy_selection(); };
+    grid_.on_context_menu = [this](int engine_index, POINT screen_point) {
+        show_item_context_menu(engine_index, screen_point);
+    };
     grid_.on_row_height_wheel = [this](int notches) {
         // 1 ノッチで約 10% 拡縮。80〜800px にクランプ
         double height = settings_.target_row_height;
@@ -846,6 +859,37 @@ void MainWindow::copy_selection() {
     }
 }
 
+void MainWindow::show_item_context_menu(int engine_index, POINT screen_point) {
+    if (engine_index < 0 || engine_index >= static_cast<int>(library_.size())) return;
+    const std::wstring& path = library_[engine_index].path;
+
+    // フォルダとファイル名を分けて出す (どのサブフォルダのファイルかを読み取りやすくする)
+    const std::wstring folder = core::parent_directory(path);
+    const std::wstring name = core::file_name(path);
+
+    HMENU menu = CreatePopupMenu();
+    if (!menu) return;
+    if (!folder.empty()) {
+        AppendMenuW(menu, MF_STRING | MF_DISABLED | MF_GRAYED, IDM_CTX_FOLDER,
+                    core::menu_label(folder, kContextPathMaxChars).c_str());
+    }
+    AppendMenuW(menu, MF_STRING | MF_DISABLED | MF_GRAYED, IDM_CTX_NAME,
+                core::menu_label(name, kContextPathMaxChars).c_str());
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, MF_STRING, IDM_CTX_REVEAL, tr(Str::CtxShowInExplorer));
+
+    // メニュー外のクリックで確実に閉じるため、先に前面へ出す
+    SetForegroundWindow(hwnd_);
+    const int command =
+        TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_LEFTALIGN | TPM_TOPALIGN,
+                       screen_point.x, screen_point.y, 0, hwnd_, nullptr);
+    DestroyMenu(menu);
+
+    if (command == IDM_CTX_REVEAL && !io::reveal_in_explorer(path)) {
+        set_status(tr(Str::StatusRevealFailed));
+    }
+}
+
 void MainWindow::rebuild_menu() {
     HMENU bar = CreateMenu();
     HMENU options = CreatePopupMenu();
@@ -1033,12 +1077,8 @@ void MainWindow::update_status() {
         if (!selected.empty()) {
             const int first = selected.front();
             if (first >= 0 && first < static_cast<int>(library_.size())) {
-                const std::wstring& path = library_[first].path;
-                const size_t pos = path.find_last_of(L"\\/");
-                const std::wstring name =
-                    pos == std::wstring::npos ? path : path.substr(pos + 1);
                 status += L"   ";
-                status += name;
+                status += core::file_name(library_[first].path);
                 if (selected.size() > 1) {
                     status += L" +";
                     status += std::to_wstring(selected.size() - 1);
